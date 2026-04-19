@@ -11,7 +11,6 @@ import time
 # --- 1. PAGE CONFIGURATION ---
 st.set_page_config(page_title="TTF-9 Nexus Universal", page_icon="🧬", layout="wide")
 
-# Custom CSS for professional dark-mode appearance
 st.markdown("""
     <style>
     .main { background-color: #0e1117; }
@@ -24,7 +23,7 @@ st.markdown("""
 st.title("🧬 TTF-9: Triadic Truth Filter")
 st.markdown("### NuN Nexus v4.9 Core | Persistent Active Inference Platform")
 
-# --- 2. SESSION MEMORY (API KEY) ---
+# --- 2. SESSION MEMORY ---
 if 'api_key' not in st.session_state:
     st.session_state['api_key'] = ""
 
@@ -42,7 +41,7 @@ with st.sidebar:
     st.markdown("### 🛠️ Creator")
     st.markdown("[**bis3946 on GitHub**](https://github.com/bis3946)")
     st.markdown("**Project:** TTF-9 Active Inference Engine")
-    st.markdown("**Version:** 3.3 (Production)")
+    st.markdown("**Version:** 3.4 (Anti-Fragile)")
     st.divider()
     st.caption("Post-Quantum Resistant Data Integrity Framework")
 
@@ -61,11 +60,9 @@ Respond ONLY in JSON: {"x": int, "y": int, "z": int, "justification": "string"}
 
 REPAIR_PROMPT = "You are a Universal Repair Engine. Rewrite the rejected segment to achieve Triadic Equilibrium (x=1, y=1, z=1). Return ONLY the rewritten text."
 
-# --- 4. ROBUST PARSER (WITH BUFFER FIX) ---
+# --- 4. ROBUST PARSER ---
 def process_file(uploaded_file):
-    # CRITICAL FIX: Reset the file buffer to the beginning before reading
-    uploaded_file.seek(0) 
-    
+    uploaded_file.seek(0) # Reset buffer
     segments = []
     file_bytes = uploaded_file.read()
     
@@ -102,6 +99,10 @@ else:
                 table_placeholder = st.empty()
                 
                 for i, seg in enumerate(segments):
+                    status = "UNKNOWN"
+                    final_seg = seg
+                    justification = ""
+                    
                     try:
                         # AUDIT
                         comp = client.chat.completions.create(
@@ -112,28 +113,36 @@ else:
                         res = json.loads(comp.choices[0].message.content)
                         f = calculate_triadic_stability(res.get('x',0), res.get('y',0), res.get('z',0))
                         
+                        justification = res.get('justification', "")
+                        
                         if f == 1:
-                            status, final_seg = "✅ APPROVED", seg
+                            status = "✅ APPROVED"
                         else:
                             # REPAIR
                             rep_comp = client.chat.completions.create(
                                 model="llama-3.3-70b-versatile",
                                 messages=[{"role": "system", "content": REPAIR_PROMPT}, 
-                                          {"role": "user", "content": f"Fix: {seg}\nReason: {res['justification']}"}],
+                                          {"role": "user", "content": f"Fix: {seg}\nReason: {justification}"}],
                                 temperature=0.5
                             )
                             final_seg = rep_comp.choices[0].message.content.strip()
                             status = "🔧 REPAIRED"
-                        
-                        results.append({"Status": status, "Segment": seg[:80] + "...", "Logic Justification": res.get('justification', "")})
-                        final_text_lines.append(final_seg)
-                        
-                        # Live Update
-                        table_placeholder.dataframe(pd.DataFrame(results), use_container_width=True)
-                        progress_bar.progress((i + 1) / len(segments))
-                        
-                    except Exception:
-                        continue
+                            
+                    except Exception as e:
+                        # AKO SE DOGODI GREŠKA (npr. Rate Limit), ispiši je da je vidimo!
+                        status = "❌ ERROR"
+                        justification = f"API Alert: {str(e)}"
+                    
+                    # Sigurno dodavanje rezultata čak i ako try/except padne
+                    results.append({"Status": status, "Segment": seg[:80] + "...", "Logic Justification": justification})
+                    final_text_lines.append(final_seg)
+                    
+                    # Live Update
+                    table_placeholder.dataframe(pd.DataFrame(results), use_container_width=True)
+                    progress_bar.progress((i + 1) / len(segments))
+                    
+                    # Zaštita od Groq Rate Limita!
+                    time.sleep(1.5)
                     
                 st.success("🎯 Audit Complete. Triadic Equilibrium achieved.")
                 
