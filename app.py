@@ -41,7 +41,7 @@ with st.sidebar:
     st.markdown("### 🛠️ Creator")
     st.markdown("[**bis3946 on GitHub**](https://github.com/bis3946)")
     st.markdown("**Project:** TTF-9 Active Inference Engine")
-    st.markdown("**Version:** 3.4 (Anti-Fragile)")
+    st.markdown("**Version:** 3.5 (Smart Pacing)")
     st.divider()
     st.caption("Post-Quantum Resistant Data Integrity Framework")
 
@@ -62,7 +62,7 @@ REPAIR_PROMPT = "You are a Universal Repair Engine. Rewrite the rejected segment
 
 # --- 4. ROBUST PARSER ---
 def process_file(uploaded_file):
-    uploaded_file.seek(0) # Reset buffer
+    uploaded_file.seek(0)
     segments = []
     file_bytes = uploaded_file.read()
     
@@ -112,12 +112,14 @@ else:
                         )
                         res = json.loads(comp.choices[0].message.content)
                         f = calculate_triadic_stability(res.get('x',0), res.get('y',0), res.get('z',0))
-                        
                         justification = res.get('justification', "")
                         
                         if f == 1:
                             status = "✅ APPROVED"
                         else:
+                            # SMART PACING: Pauza prije Repair poziva da ne preopteretimo server
+                            time.sleep(2.5) 
+                            
                             # REPAIR
                             rep_comp = client.chat.completions.create(
                                 model="llama-3.3-70b-versatile",
@@ -129,11 +131,9 @@ else:
                             status = "🔧 REPAIRED"
                             
                     except Exception as e:
-                        # AKO SE DOGODI GREŠKA (npr. Rate Limit), ispiši je da je vidimo!
                         status = "❌ ERROR"
                         justification = f"API Alert: {str(e)}"
                     
-                    # Sigurno dodavanje rezultata čak i ako try/except padne
                     results.append({"Status": status, "Segment": seg[:80] + "...", "Logic Justification": justification})
                     final_text_lines.append(final_seg)
                     
@@ -141,8 +141,8 @@ else:
                     table_placeholder.dataframe(pd.DataFrame(results), use_container_width=True)
                     progress_bar.progress((i + 1) / len(segments))
                     
-                    # Zaštita od Groq Rate Limita!
-                    time.sleep(1.5)
+                    # SMART PACING: Glavna sigurnosna pauza (osigurava rad ispod 30 zahtjeva/min)
+                    time.sleep(2.5)
                     
                 st.success("🎯 Audit Complete. Triadic Equilibrium achieved.")
                 
