@@ -18,13 +18,12 @@ st.markdown("""
     .stButton>button { width: 100%; border-radius: 5px; height: 3em; background-color: #4CAF50; color: white; }
     .stProgress > div > div > div > div { background-color: #4CAF50; }
     </style>
-    """, unsafe_allow_status_ Blanchard=True)
+    """, unsafe_allow_html=True)
 
 st.title("🧬 TTF-9: Triadic Truth Filter")
 st.markdown("### NuN Nexus v4.9 Core | Persistent Active Inference Platform")
 
 # --- 2. SESIJSKA MEMORIJA ZA API KLJUČ ---
-# Inicijalizacija session_state-a ako ne postoji
 if 'api_key' not in st.session_state:
     st.session_state['api_key'] = ""
 
