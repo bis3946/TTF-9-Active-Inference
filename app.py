@@ -8,10 +8,10 @@ import pytesseract
 from pdf2image import convert_from_bytes
 import time
 
-# --- 1. KONFIGURACIJA STRANICE ---
+# --- 1. PAGE CONFIGURATION ---
 st.set_page_config(page_title="TTF-9 Nexus Universal", page_icon="🧬", layout="wide")
 
-# Prilagođeni CSS za profesionalni izgled i sakrivanje suvišnih elemenata
+# Custom CSS for professional dark-mode appearance
 st.markdown("""
     <style>
     .main { background-color: #0e1117; }
@@ -24,15 +24,12 @@ st.markdown("""
 st.title("🧬 TTF-9: Triadic Truth Filter")
 st.markdown("### NuN Nexus v4.9 Core | Persistent Active Inference Platform")
 
-# --- 2. SESIJSKA MEMORIJA ---
-# Provjeravamo postoji li api_key u memoriji preglednika
+# --- 2. SESSION MEMORY (API KEY) ---
 if 'api_key' not in st.session_state:
     st.session_state['api_key'] = ""
 
-# --- 3. BOČNA TRAKA (SIDEBAR) - LOGO I PODATCI O KREATORU ---
 with st.sidebar:
     st.header("🔑 Authentication")
-    # Korisnik unosi ključ koji se odmah sprema u session_state
     api_input = st.text_input("Enter Groq API Key:", type="password", value=st.session_state['api_key'])
     
     if api_input:
@@ -42,17 +39,14 @@ with st.sidebar:
         st.info("Don't have a key? [Get your Groq API Key here](https://console.groq.com/keys)")
     
     st.divider()
-    
-    # Zamjena Identity dijela sa GitHub podacima
     st.markdown("### 🛠️ Creator")
     st.markdown("[**bis3946 on GitHub**](https://github.com/bis3946)")
     st.markdown("**Project:** TTF-9 Active Inference Engine")
-    st.markdown("**Version:** 3.2 (Production)")
-    
+    st.markdown("**Version:** 3.3 (Production)")
     st.divider()
     st.caption("Post-Quantum Resistant Data Integrity Framework")
 
-# --- 4. TEHNIČKA LOGIKA ---
+# --- 3. TRIADIC LOGIC ENGINE ---
 def calculate_triadic_stability(x, y, z):
     return 1 if x*y*z == 1 else (-1 if x*y*z == -1 else 0)
 
@@ -67,7 +61,11 @@ Respond ONLY in JSON: {"x": int, "y": int, "z": int, "justification": "string"}
 
 REPAIR_PROMPT = "You are a Universal Repair Engine. Rewrite the rejected segment to achieve Triadic Equilibrium (x=1, y=1, z=1). Return ONLY the rewritten text."
 
+# --- 4. ROBUST PARSER (WITH BUFFER FIX) ---
 def process_file(uploaded_file):
+    # CRITICAL FIX: Reset the file buffer to the beginning before reading
+    uploaded_file.seek(0) 
+    
     segments = []
     file_bytes = uploaded_file.read()
     
@@ -83,22 +81,20 @@ def process_file(uploaded_file):
         segments = [s.strip() for s in text.split('\n') if len(s.strip()) > 25]
     return segments
 
-# --- 5. OPERATIVNI TOK ---
+# --- 5. OPERATION PIPELINE ---
 if not st.session_state['api_key']:
     st.warning("⚠️ Please provide your Groq API Key in the sidebar to start processing documents.")
 else:
     client = Groq(api_key=st.session_state['api_key'])
     
-    # File uploader ostaje vidljiv cijelo vrijeme
     uploaded_file = st.file_uploader("📂 Upload Document (PDF, TXT) for Audit", type=["pdf", "txt"])
 
     if uploaded_file:
-        # Prikazujemo gumb samo ako je datoteka učitana
         if st.button("🚀 Commence TTF-9 Audit"):
             segments = process_file(uploaded_file)
             
             if segments:
-                st.write(f"Sustav je spreman. Analiziram **{len(segments)}** segmenata...")
+                st.write(f"System ready. Analyzing **{len(segments)}** logic segments...")
                 
                 results = []
                 final_text_lines = []
@@ -132,16 +128,15 @@ else:
                         results.append({"Status": status, "Segment": seg[:80] + "...", "Logic Justification": res.get('justification', "")})
                         final_text_lines.append(final_seg)
                         
-                        # Ažuriranje prikaza uživo
+                        # Live Update
                         table_placeholder.dataframe(pd.DataFrame(results), use_container_width=True)
                         progress_bar.progress((i + 1) / len(segments))
                         
                     except Exception:
                         continue
                     
-                st.success("🎯 Analiza završena. Triadic Equilibrium postignut.")
+                st.success("🎯 Audit Complete. Triadic Equilibrium achieved.")
                 
-                # Izvoz podataka
                 st.divider()
                 c1, c2 = st.columns(2)
                 
@@ -151,8 +146,7 @@ else:
                 csv_report = pd.DataFrame(results).to_csv(index=False).encode('utf-8')
                 c2.download_button("📊 Download Audit Log (CSV)", csv_report, file_name=f"TTF9_LOG_{uploaded_file.name}.csv")
                 
-                # Poruka za nastavak rada
-                st.info("💡 Sustav je spreman za novu analizu. Možete učitati novu datoteku iznad.")
+                st.info("💡 System is ready for a new audit. You can re-run this file or upload a new document above.")
             else:
-                st.error("Nisu pronađeni valjani segmenti teksta u dokumentu.")
+                st.error("No valid text segments found in the document. Please ensure the file is not empty.")
 
