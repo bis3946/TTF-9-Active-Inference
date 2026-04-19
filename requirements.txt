@@ -1,0 +1,8 @@
+streamlit
+groq
+pandas
+numpy
+pdfplumber
+pytesseract
+pdf2image
+
