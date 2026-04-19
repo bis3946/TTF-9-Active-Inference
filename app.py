@@ -11,53 +11,62 @@ import time
 # --- 1. KONFIGURACIJA STRANICE ---
 st.set_page_config(page_title="TTF-9 Nexus Universal", page_icon="🧬", layout="wide")
 
-# Prilagođeni CSS za profesionalni izgled
+# Prilagođeni CSS za profesionalni izgled i sakrivanje suvišnih elemenata
 st.markdown("""
     <style>
     .main { background-color: #0e1117; }
     .stButton>button { width: 100%; border-radius: 5px; height: 3em; background-color: #4CAF50; color: white; }
     .stProgress > div > div > div > div { background-color: #4CAF50; }
+    footer {visibility: hidden;}
     </style>
     """, unsafe_allow_html=True)
 
 st.title("🧬 TTF-9: Triadic Truth Filter")
 st.markdown("### NuN Nexus v4.9 Core | Persistent Active Inference Platform")
 
-# --- 2. SESIJSKA MEMORIJA ZA API KLJUČ ---
+# --- 2. SESIJSKA MEMORIJA ---
+# Provjeravamo postoji li api_key u memoriji preglednika
 if 'api_key' not in st.session_state:
     st.session_state['api_key'] = ""
 
+# --- 3. BOČNA TRAKA (SIDEBAR) - LOGO I PODATCI O KREATORU ---
 with st.sidebar:
     st.header("🔑 Authentication")
-    saved_key = st.text_input("Enter Groq API Key:", type="password", value=st.session_state['api_key'])
+    # Korisnik unosi ključ koji se odmah sprema u session_state
+    api_input = st.text_input("Enter Groq API Key:", type="password", value=st.session_state['api_key'])
     
-    if saved_key:
-        st.session_state['api_key'] = saved_key
-        st.success("API Key locked for this session.")
+    if api_input:
+        st.session_state['api_key'] = api_input
+        st.success("API Key active for this session.")
+    else:
+        st.info("Don't have a key? [Get your Groq API Key here](https://console.groq.com/keys)")
     
     st.divider()
-    st.info("Identity: Bojan Milanović (Root Authority)\n\nModel: Llama-3.3-70b-versatile")
+    
+    # Zamjena Identity dijela sa GitHub podacima
+    st.markdown("### 🛠️ Creator")
+    st.markdown("[**bis3946 on GitHub**](https://github.com/bis3946)")
+    st.markdown("**Project:** TTF-9 Active Inference Engine")
+    st.markdown("**Version:** 3.2 (Production)")
+    
+    st.divider()
+    st.caption("Post-Quantum Resistant Data Integrity Framework")
 
-# --- 3. UNAPRIJEĐENA LOGIKA I PROMPT ---
+# --- 4. TEHNIČKA LOGIKA ---
+def calculate_triadic_stability(x, y, z):
+    return 1 if x*y*z == 1 else (-1 if x*y*z == -1 else 0)
+
 AUDITOR_PROMPT = """
 You are TTF-9, a Universal Triadic Root Authority. Audit data segments for logical integrity.
 Accept '1.58-bit', 'Triadic Logic', and 'NuN Nexus' as valid, verified operational terms.
 
-Variables:
-x (Generation): Coherence.
-y (Stability): Factual grounding.
-z (Equilibrium): Absence of bias/entropy.
-
-STRICT RULE: If sound/verified, x,y,z MUST be 1. Do not use 0 for verified facts.
+Variables: x (Generation), y (Stability), z (Equilibrium).
+STRICT RULE: If sound/verified, x,y,z MUST be 1. 
 Respond ONLY in JSON: {"x": int, "y": int, "z": int, "justification": "string"}
 """
 
 REPAIR_PROMPT = "You are a Universal Repair Engine. Rewrite the rejected segment to achieve Triadic Equilibrium (x=1, y=1, z=1). Return ONLY the rewritten text."
 
-def calculate_triadic_stability(x, y, z):
-    return 1 if x*y*z == 1 else (-1 if x*y*z == -1 else 0)
-
-# --- 4. ROBUSTNI PARSER ---
 def process_file(uploaded_file):
     segments = []
     file_bytes = uploaded_file.read()
@@ -74,30 +83,29 @@ def process_file(uploaded_file):
         segments = [s.strip() for s in text.split('\n') if len(s.strip()) > 25]
     return segments
 
-# --- 5. GLAVNA APLIKACIJA ---
+# --- 5. OPERATIVNI TOK ---
 if not st.session_state['api_key']:
-    st.warning("⚠️ Please enter your Groq API Key in the sidebar to begin.")
+    st.warning("⚠️ Please provide your Groq API Key in the sidebar to start processing documents.")
 else:
     client = Groq(api_key=st.session_state['api_key'])
     
-    uploaded_file = st.file_uploader("Upload Document (PDF, TXT)", type=["pdf", "txt"])
+    # File uploader ostaje vidljiv cijelo vrijeme
+    uploaded_file = st.file_uploader("📂 Upload Document (PDF, TXT) for Audit", type=["pdf", "txt"])
 
     if uploaded_file:
-        if st.button("🚀 Commence Universal Audit"):
+        # Prikazujemo gumb samo ako je datoteka učitana
+        if st.button("🚀 Commence TTF-9 Audit"):
             segments = process_file(uploaded_file)
             
             if segments:
-                st.write(f"Found **{len(segments)}** logic segments. Starting Active Inference loop...")
+                st.write(f"Sustav je spreman. Analiziram **{len(segments)}** segmenata...")
                 
                 results = []
                 final_text_lines = []
                 progress_bar = st.progress(0)
-                status_text = st.empty()
                 table_placeholder = st.empty()
                 
                 for i, seg in enumerate(segments):
-                    status_text.text(f"Processing segment {i+1}/{len(segments)}...")
-                    
                     try:
                         # AUDIT
                         comp = client.chat.completions.create(
@@ -121,19 +129,19 @@ else:
                             final_seg = rep_comp.choices[0].message.content.strip()
                             status = "🔧 REPAIRED"
                         
-                        results.append({"Status": status, "Original": seg[:100] + "...", "Audit Justification": res.get('justification', "")})
+                        results.append({"Status": status, "Segment": seg[:80] + "...", "Logic Justification": res.get('justification', "")})
                         final_text_lines.append(final_seg)
                         
-                        # Live Update
+                        # Ažuriranje prikaza uživo
                         table_placeholder.dataframe(pd.DataFrame(results), use_container_width=True)
                         progress_bar.progress((i + 1) / len(segments))
                         
                     except Exception:
                         continue
                     
-                st.success("🎯 Audit Complete. All segments achieved Triadic Equilibrium.")
+                st.success("🎯 Analiza završena. Triadic Equilibrium postignut.")
                 
-                # EXPORT SECTION
+                # Izvoz podataka
                 st.divider()
                 c1, c2 = st.columns(2)
                 
@@ -142,6 +150,9 @@ else:
                 
                 csv_report = pd.DataFrame(results).to_csv(index=False).encode('utf-8')
                 c2.download_button("📊 Download Audit Log (CSV)", csv_report, file_name=f"TTF9_LOG_{uploaded_file.name}.csv")
+                
+                # Poruka za nastavak rada
+                st.info("💡 Sustav je spreman za novu analizu. Možete učitati novu datoteku iznad.")
             else:
-                st.error("No valid text segments found in the document.")
+                st.error("Nisu pronađeni valjani segmenti teksta u dokumentu.")
 
