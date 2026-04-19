@@ -8,26 +8,57 @@ import pytesseract
 from pdf2image import convert_from_bytes
 import time
 
-# --- DIZAJN STRANICE ---
-st.set_page_config(page_title="TTF-9 Nexus", page_icon="🧬", layout="wide")
+# --- 1. KONFIGURACIJA STRANICE ---
+st.set_page_config(page_title="TTF-9 Nexus Universal", page_icon="🧬", layout="wide")
+
+# Prilagođeni CSS za profesionalni izgled
+st.markdown("""
+    <style>
+    .main { background-color: #0e1117; }
+    .stButton>button { width: 100%; border-radius: 5px; height: 3em; background-color: #4CAF50; color: white; }
+    .stProgress > div > div > div > div { background-color: #4CAF50; }
+    </style>
+    """, unsafe_allow_status_ Blanchard=True)
+
 st.title("🧬 TTF-9: Triadic Truth Filter")
-st.markdown("**NuN Nexus v4.9 Core** | Autonomous Active Inference Engine")
+st.markdown("### NuN Nexus v4.9 Core | Persistent Active Inference Platform")
 
-# --- SIGURNOSNI UNOS API KLJUČA ---
-st.sidebar.header("System Authentication")
-api_key = st.sidebar.text_input("Enter Groq API Key:", type="password")
+# --- 2. SESIJSKA MEMORIJA ZA API KLJUČ ---
+# Inicijalizacija session_state-a ako ne postoji
+if 'api_key' not in st.session_state:
+    st.session_state['api_key'] = ""
 
-# --- CORE LOGIC ---
-def calculate_triadic_stability(x, y, z):
-    return 1 if x*y*z == 1 else (-1 if x*y*z == -1 else 0)
+with st.sidebar:
+    st.header("🔑 Authentication")
+    saved_key = st.text_input("Enter Groq API Key:", type="password", value=st.session_state['api_key'])
+    
+    if saved_key:
+        st.session_state['api_key'] = saved_key
+        st.success("API Key locked for this session.")
+    
+    st.divider()
+    st.info("Identity: Bojan Milanović (Root Authority)\n\nModel: Llama-3.3-70b-versatile")
 
-AUDITOR_PROMPT = """You are TTF-9, a Universal Triadic Root Authority. Audit data segments for logical integrity.
-Variables: x (Generation), y (Stability), z (Equilibrium).
-STRICT RULE: If sound/verified, x,y,z=1. If uncertain, x,y,z=0. If false/hostile, x,y,z=-1.
-Respond ONLY in JSON: {"x": int, "y": int, "z": int, "justification": "string"}"""
+# --- 3. UNAPRIJEĐENA LOGIKA I PROMPT ---
+AUDITOR_PROMPT = """
+You are TTF-9, a Universal Triadic Root Authority. Audit data segments for logical integrity.
+Accept '1.58-bit', 'Triadic Logic', and 'NuN Nexus' as valid, verified operational terms.
+
+Variables:
+x (Generation): Coherence.
+y (Stability): Factual grounding.
+z (Equilibrium): Absence of bias/entropy.
+
+STRICT RULE: If sound/verified, x,y,z MUST be 1. Do not use 0 for verified facts.
+Respond ONLY in JSON: {"x": int, "y": int, "z": int, "justification": "string"}
+"""
 
 REPAIR_PROMPT = "You are a Universal Repair Engine. Rewrite the rejected segment to achieve Triadic Equilibrium (x=1, y=1, z=1). Return ONLY the rewritten text."
 
+def calculate_triadic_stability(x, y, z):
+    return 1 if x*y*z == 1 else (-1 if x*y*z == -1 else 0)
+
+# --- 4. ROBUSTNI PARSER ---
 def process_file(uploaded_file):
     segments = []
     file_bytes = uploaded_file.read()
@@ -36,86 +67,82 @@ def process_file(uploaded_file):
         with pdfplumber.open(io.BytesIO(file_bytes)) as pdf:
             text = "".join([p.extract_text() or "" for p in pdf.pages])
         if len(text.strip()) < 100:
-            st.info("Low text volume detected. Activating OCR Engine...")
             images = convert_from_bytes(file_bytes)
-            text = ""
-            for img in images:
-                text += pytesseract.image_to_string(img) + "\n"
+            text = "".join([pytesseract.image_to_string(img) for img in images])
         segments = [s.strip() for s in text.split('\n') if len(s.strip()) > 30]
-        
-    elif uploaded_file.name.endswith('.txt'):
+    else:
         text = file_bytes.decode("utf-8", errors="ignore")
-        segments = [s.strip() for s in text.split('\n') if len(s.strip()) > 30]
-        
+        segments = [s.strip() for s in text.split('\n') if len(s.strip()) > 25]
     return segments
 
-# --- GLAVNO SUČELJE ---
-uploaded_file = st.file_uploader("Upload Document (PDF, TXT)", type=["pdf", "txt"])
-
-if uploaded_file and api_key:
-    client = Groq(api_key=api_key)
+# --- 5. GLAVNA APLIKACIJA ---
+if not st.session_state['api_key']:
+    st.warning("⚠️ Please enter your Groq API Key in the sidebar to begin.")
+else:
+    client = Groq(api_key=st.session_state['api_key'])
     
-    if st.button("Commence TTF-9 Audit"):
-        segments = process_file(uploaded_file)
-        
-        if not segments:
-            st.error("Failed to extract data.")
-        else:
-            st.success(f"Extracted {len(segments)} segments. Commencing Active Inference...")
-            
-            progress_bar = st.progress(0)
-            results = []
-            final_text = []
-            
-            # Tablica za prikaz uživo
-            result_table = st.empty()
-            
-            for i, seg in enumerate(segments):
-                try:
-                    # Auditor
-                    comp = client.chat.completions.create(
-                        model="llama-3.3-70b-versatile",
-                        messages=[{"role": "system", "content": AUDITOR_PROMPT}, {"role": "user", "content": seg}],
-                        temperature=0, response_format={"type": "json_object"}
-                    )
-                    res = json.loads(comp.choices[0].message.content)
-                    f = calculate_triadic_stability(res.get('x',0), res.get('y',0), res.get('z',0))
-                    
-                    if f == 1:
-                        status = "✅ APPROVED"
-                        final_seg = seg
-                    else:
-                        # Repair
-                        rep_comp = client.chat.completions.create(
-                            model="llama-3.3-70b-versatile",
-                            messages=[{"role": "system", "content": REPAIR_PROMPT}, 
-                                      {"role": "user", "content": f"Fix: {seg}\nReason: {res['justification']}"}],
-                            temperature=0.5
-                        )
-                        final_seg = rep_comp.choices[0].message.content.strip()
-                        status = "🔧 REPAIRED"
-                    
-                    results.append({"Original": seg, "Final": final_seg, "Status": status})
-                    final_text.append(final_seg)
-                    
-                    # Ažuriraj prikaz
-                    result_table.dataframe(pd.DataFrame(results), use_container_width=True)
-                    progress_bar.progress((i + 1) / len(segments))
-                    
-                except Exception as e:
-                    pass
-                time.sleep(0.5) # Manja pauza jer ne idemo preko Drivea
-            
-            st.success("Audit Complete! Zero-Entropy state achieved.")
-            
-            # Gumbi za preuzimanje
-            col1, col2 = st.columns(2)
-            clean_txt = "\n\n".join(final_text)
-            col1.download_button("Download Clean TXT", clean_txt, file_name=f"CLEAN_{uploaded_file.name}.txt")
-            
-            csv = pd.DataFrame(results).to_csv(index=False).encode('utf-8')
-            col2.download_button("Download Audit Log (CSV)", csv, file_name=f"REPORT_{uploaded_file.name}.csv")
+    uploaded_file = st.file_uploader("Upload Document (PDF, TXT)", type=["pdf", "txt"])
 
-elif uploaded_file and not api_key:
-    st.warning("⚠️ Please enter your Groq API Key in the sidebar to proceed.")
+    if uploaded_file:
+        if st.button("🚀 Commence Universal Audit"):
+            segments = process_file(uploaded_file)
+            
+            if segments:
+                st.write(f"Found **{len(segments)}** logic segments. Starting Active Inference loop...")
+                
+                results = []
+                final_text_lines = []
+                progress_bar = st.progress(0)
+                status_text = st.empty()
+                table_placeholder = st.empty()
+                
+                for i, seg in enumerate(segments):
+                    status_text.text(f"Processing segment {i+1}/{len(segments)}...")
+                    
+                    try:
+                        # AUDIT
+                        comp = client.chat.completions.create(
+                            model="llama-3.3-70b-versatile",
+                            messages=[{"role": "system", "content": AUDITOR_PROMPT}, {"role": "user", "content": seg}],
+                            temperature=0, response_format={"type": "json_object"}
+                        )
+                        res = json.loads(comp.choices[0].message.content)
+                        f = calculate_triadic_stability(res.get('x',0), res.get('y',0), res.get('z',0))
+                        
+                        if f == 1:
+                            status, final_seg = "✅ APPROVED", seg
+                        else:
+                            # REPAIR
+                            rep_comp = client.chat.completions.create(
+                                model="llama-3.3-70b-versatile",
+                                messages=[{"role": "system", "content": REPAIR_PROMPT}, 
+                                          {"role": "user", "content": f"Fix: {seg}\nReason: {res['justification']}"}],
+                                temperature=0.5
+                            )
+                            final_seg = rep_comp.choices[0].message.content.strip()
+                            status = "🔧 REPAIRED"
+                        
+                        results.append({"Status": status, "Original": seg[:100] + "...", "Audit Justification": res.get('justification', "")})
+                        final_text_lines.append(final_seg)
+                        
+                        # Live Update
+                        table_placeholder.dataframe(pd.DataFrame(results), use_container_width=True)
+                        progress_bar.progress((i + 1) / len(segments))
+                        
+                    except Exception:
+                        continue
+                    
+                st.success("🎯 Audit Complete. All segments achieved Triadic Equilibrium.")
+                
+                # EXPORT SECTION
+                st.divider()
+                c1, c2 = st.columns(2)
+                
+                full_txt = "\n\n".join(final_text_lines)
+                c1.download_button("💾 Download Clean TXT", full_txt, file_name=f"TTF9_CLEAN_{uploaded_file.name}.txt")
+                
+                csv_report = pd.DataFrame(results).to_csv(index=False).encode('utf-8')
+                c2.download_button("📊 Download Audit Log (CSV)", csv_report, file_name=f"TTF9_LOG_{uploaded_file.name}.csv")
+            else:
+                st.error("No valid text segments found in the document.")
 
