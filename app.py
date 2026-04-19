@@ -23,9 +23,11 @@ st.markdown("""
 st.title("🧬 TTF-9: Triadic Truth Filter")
 st.markdown("### NuN Nexus v4.9 Core | Persistent Active Inference Platform")
 
-# --- 2. SESSION MEMORY ---
+# --- 2. ADVANCED SESSION MEMORY (The "Notes" Pad) ---
 if 'api_key' not in st.session_state:
     st.session_state['api_key'] = ""
+if 'memory_cache' not in st.session_state:
+    st.session_state['memory_cache'] = {} # Ovdje sustav "pamti" dok je tab otvoren
 
 with st.sidebar:
     st.header("🔑 Authentication")
@@ -41,7 +43,7 @@ with st.sidebar:
     st.markdown("### 🛠️ Creator")
     st.markdown("[**bis3946 on GitHub**](https://github.com/bis3946)")
     st.markdown("**Project:** TTF-9 Active Inference Engine")
-    st.markdown("**Version:** 3.5 (Smart Pacing)")
+    st.markdown("**Version:** 3.6 (Session Memory)")
     st.divider()
     st.caption("Post-Quantum Resistant Data Integrity Framework")
 
@@ -62,7 +64,7 @@ REPAIR_PROMPT = "You are a Universal Repair Engine. Rewrite the rejected segment
 
 # --- 4. ROBUST PARSER ---
 def process_file(uploaded_file):
-    uploaded_file.seek(0)
+    uploaded_file.seek(0) # Rewind the file to the start
     segments = []
     file_bytes = uploaded_file.read()
     
@@ -80,10 +82,9 @@ def process_file(uploaded_file):
 
 # --- 5. OPERATION PIPELINE ---
 if not st.session_state['api_key']:
-    st.warning("⚠️ Please provide your Groq API Key in the sidebar to start processing documents.")
+    st.warning("⚠️ Please provide your Groq API Key in the sidebar to start.")
 else:
     client = Groq(api_key=st.session_state['api_key'])
-    
     uploaded_file = st.file_uploader("📂 Upload Document (PDF, TXT) for Audit", type=["pdf", "txt"])
 
     if uploaded_file:
@@ -91,7 +92,7 @@ else:
             segments = process_file(uploaded_file)
             
             if segments:
-                st.write(f"System ready. Analyzing **{len(segments)}** logic segments...")
+                st.write(f"System ready. Analyzing **{len(segments)}** segments...")
                 
                 results = []
                 final_text_lines = []
@@ -99,63 +100,60 @@ else:
                 table_placeholder = st.empty()
                 
                 for i, seg in enumerate(segments):
-                    status = "UNKNOWN"
-                    final_seg = seg
-                    justification = ""
-                    
-                    try:
-                        # AUDIT
-                        comp = client.chat.completions.create(
-                            model="llama-3.3-70b-versatile",
-                            messages=[{"role": "system", "content": AUDITOR_PROMPT}, {"role": "user", "content": seg}],
-                            temperature=0, response_format={"type": "json_object"}
-                        )
-                        res = json.loads(comp.choices[0].message.content)
-                        f = calculate_triadic_stability(res.get('x',0), res.get('y',0), res.get('z',0))
-                        justification = res.get('justification', "")
-                        
-                        if f == 1:
-                            status = "✅ APPROVED"
-                        else:
-                            # SMART PACING: Pauza prije Repair poziva da ne preopteretimo server
-                            time.sleep(2.5) 
-                            
-                            # REPAIR
-                            rep_comp = client.chat.completions.create(
+                    # --- MEMORY CHECK (The notes pad) ---
+                    if seg in st.session_state['memory_cache']:
+                        cached = st.session_state['memory_cache'][seg]
+                        status = "🧠 SESSION HIT"
+                        final_seg = cached['final']
+                        justification = cached['justification']
+                    else:
+                        try:
+                            # AUDIT call
+                            comp = client.chat.completions.create(
                                 model="llama-3.3-70b-versatile",
-                                messages=[{"role": "system", "content": REPAIR_PROMPT}, 
-                                          {"role": "user", "content": f"Fix: {seg}\nReason: {justification}"}],
-                                temperature=0.5
+                                messages=[{"role": "system", "content": AUDITOR_PROMPT}, {"role": "user", "content": seg}],
+                                temperature=0, response_format={"type": "json_object"}
                             )
-                            final_seg = rep_comp.choices[0].message.content.strip()
-                            status = "🔧 REPAIRED"
+                            res = json.loads(comp.choices[0].message.content)
+                            f = calculate_triadic_stability(res.get('x',0), res.get('y',0), res.get('z',0))
+                            justification = res.get('justification', "")
                             
-                    except Exception as e:
-                        status = "❌ ERROR"
-                        justification = f"API Alert: {str(e)}"
+                            if f == 1:
+                                status, final_seg = "✅ APPROVED", seg
+                            else:
+                                time.sleep(2) # Prevent token burst
+                                # REPAIR call
+                                rep_comp = client.chat.completions.create(
+                                    model="llama-3.3-70b-versatile",
+                                    messages=[{"role": "system", "content": REPAIR_PROMPT}, 
+                                              {"role": "user", "content": f"Fix: {seg}\nReason: {justification}"}],
+                                    temperature=0.5
+                                )
+                                final_seg = rep_comp.choices[0].message.content.strip()
+                                status = "🔧 REPAIRED"
+                            
+                            # Save to session memory
+                            st.session_state['memory_cache'][seg] = {"final": final_seg, "justification": justification}
+                            time.sleep(2.5) # Global safety delay for Free Tier TPM
+
+                        except Exception as e:
+                            status, final_seg, justification = "❌ ERROR", seg, f"API Alert: {str(e)}"
                     
                     results.append({"Status": status, "Segment": seg[:80] + "...", "Logic Justification": justification})
                     final_text_lines.append(final_seg)
                     
-                    # Live Update
+                    # UI Update
                     table_placeholder.dataframe(pd.DataFrame(results), use_container_width=True)
                     progress_bar.progress((i + 1) / len(segments))
-                    
-                    # SMART PACING: Glavna sigurnosna pauza (osigurava rad ispod 30 zahtjeva/min)
-                    time.sleep(2.5)
-                    
+                
                 st.success("🎯 Audit Complete. Triadic Equilibrium achieved.")
                 
                 st.divider()
                 c1, c2 = st.columns(2)
-                
                 full_txt = "\n\n".join(final_text_lines)
                 c1.download_button("💾 Download Clean TXT", full_txt, file_name=f"TTF9_CLEAN_{uploaded_file.name}.txt")
-                
                 csv_report = pd.DataFrame(results).to_csv(index=False).encode('utf-8')
                 c2.download_button("📊 Download Audit Log (CSV)", csv_report, file_name=f"TTF9_LOG_{uploaded_file.name}.csv")
                 
-                st.info("💡 System is ready for a new audit. You can re-run this file or upload a new document above.")
-            else:
-                st.error("No valid text segments found in the document. Please ensure the file is not empty.")
+                st.info("💡 System is ready. You can re-run this file (it will use Memory) or upload a new one.")
 
