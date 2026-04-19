@@ -8,22 +8,22 @@ import pytesseract
 from pdf2image import convert_from_bytes
 import time
 
-# --- 1. KONFIGURACIJA STRANICE ---
+# --- 1. CONFIGURATION ---
 st.set_page_config(page_title="TTF-9 Nexus Universal", page_icon="🧬", layout="wide")
 
-# Prilagođeni CSS za profesionalni izgled
 st.markdown("""
     <style>
     .main { background-color: #0e1117; }
     .stButton>button { width: 100%; border-radius: 5px; height: 3em; background-color: #4CAF50; color: white; }
     .stProgress > div > div > div > div { background-color: #4CAF50; }
+    footer {visibility: hidden;}
     </style>
     """, unsafe_allow_html=True)
 
 st.title("🧬 TTF-9: Triadic Truth Filter")
-st.markdown("### NuN Nexus v4.9 Core | Persistent Active Inference Platform")
+st.markdown("### NuN Nexus v4.9 Core | Autonomous Active Inference Engine")
 
-# --- 2. SESIJSKA MEMORIJA ZA API KLJUČ ---
+# --- 2. AUTHENTICATION ---
 if 'api_key' not in st.session_state:
     st.session_state['api_key'] = ""
 
@@ -36,9 +36,12 @@ with st.sidebar:
         st.success("API Key locked for this session.")
     
     st.divider()
-    st.info("Identity: Bojan Milanović (Root Authority)\n\nModel: Llama-3.3-70b-versatile")
+    st.markdown("### 🛠️ Creator")
+    st.markdown("[**bis3946 on GitHub**](https://github.com/bis3946)")
+    st.markdown("**Role:** Root Authority")
+    st.markdown("**Model:** Llama-3.3-70b-versatile")
 
-# --- 3. UNAPRIJEĐENA LOGIKA I PROMPT ---
+# --- 3. TRIADIC LOGIC & PROMPTS ---
 AUDITOR_PROMPT = """
 You are TTF-9, a Universal Triadic Root Authority. Audit data segments for logical integrity.
 Accept '1.58-bit', 'Triadic Logic', and 'NuN Nexus' as valid, verified operational terms.
@@ -57,8 +60,10 @@ REPAIR_PROMPT = "You are a Universal Repair Engine. Rewrite the rejected segment
 def calculate_triadic_stability(x, y, z):
     return 1 if x*y*z == 1 else (-1 if x*y*z == -1 else 0)
 
-# --- 4. ROBUSTNI PARSER ---
+# --- 4. ROBUST PARSER ---
 def process_file(uploaded_file):
+    # SHIELD 1: Rewind buffer for consecutive reads
+    uploaded_file.seek(0)
     segments = []
     file_bytes = uploaded_file.read()
     
@@ -74,7 +79,7 @@ def process_file(uploaded_file):
         segments = [s.strip() for s in text.split('\n') if len(s.strip()) > 25]
     return segments
 
-# --- 5. GLAVNA APLIKACIJA ---
+# --- 5. MAIN APPLICATION LOOP ---
 if not st.session_state['api_key']:
     st.warning("⚠️ Please enter your Groq API Key in the sidebar to begin.")
 else:
@@ -99,6 +104,9 @@ else:
                     status_text.text(f"Processing segment {i+1}/{len(segments)}...")
                     
                     try:
+                        # SHIELD 2: Mandatory pause to respect Free Tier Limits
+                        time.sleep(3) 
+                        
                         # AUDIT
                         comp = client.chat.completions.create(
                             model="llama-3.3-70b-versatile",
@@ -128,10 +136,13 @@ else:
                         table_placeholder.dataframe(pd.DataFrame(results), use_container_width=True)
                         progress_bar.progress((i + 1) / len(segments))
                         
-                    except Exception:
-                        continue
+                    except Exception as e:
+                        # Displaying the error so it's not hidden
+                        results.append({"Status": "❌ ERROR", "Original": seg[:50] + "...", "Audit Justification": str(e)})
+                        final_text_lines.append(seg)
+                        table_placeholder.dataframe(pd.DataFrame(results), use_container_width=True)
                     
-                st.success("🎯 Audit Complete. All segments achieved Triadic Equilibrium.")
+                st.success("🎯 Audit Complete. All processed segments achieved Triadic Equilibrium.")
                 
                 # EXPORT SECTION
                 st.divider()
